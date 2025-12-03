@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大数据与人工智能 - 模块三：视觉叙事</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --stage-width: 1920px;
+            --stage-height: 1080px;
+            --stage-max: 1200px; /* 实际显示最大宽度 */
+            --safe: 60px;
+            --bg-color: #000000;
+            --card-bg: #2d2d2db3;
+            --card-border: #ffffff1f;
+            --text-primary: #FFFFFF;
+            --text-secondary: #D9D9D9;
+            --text-tertiary: #888888;
+            --accent: #00ff88;
+            --accent-blue: #3b82f6;
+            --accent-red: #ff4d4f;
+            --accent-purple: #9333ea;
+            --code-bg: #1e1e1e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            background: #111; 
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: var(--text-primary);
+        }
+
+        /* 舞台容器 */
+        #stage-container {
+            width: var(--stage-max);
+            height: calc(var(--stage-max) * 9 / 16);
+            position: relative;
+            background: var(--bg-color);
+            border: 1px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        /* 网格背景 */
+        .grid-bg {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* 幻灯片通用样式 */
+        .slide {
+            position: absolute;
+            inset: 0;
+            padding: var(--safe);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease;
+            z-index: 1;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 2;
+        }
+
+        /* 头部区域 */
+        .header {
+            height: 20%;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .slide-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .slide-subtitle {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        /* 内容区域布局 */
+        .content {
+            height: 80%;
+            width: 100%;
+            position: relative;
+        }
+
+        /* 布局类型 */
+        .split { display: flex; gap: 40px; height: 100%; }
+        .split > div { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; height: 100%; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; height: 100%; }
+        
+        .big-text { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            height: 100%; 
+        }
+
+        .data-first {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* 卡片组件 */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 30px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card h3 { font-size: 1.8rem; color: var(--accent); margin-bottom: 10px; }
+        .card p, .card li { font-size: 1.1rem; line-height: 1.6; color: var(--text-secondary); }
+        .card ul { list-style: none; }
+        .card li::before { content: "•"; color: var(--accent); margin-right: 10px; }
+
+        /* 代码块 */
+        .code-block {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            color: #d4d4d4;
+            border-left: 4px solid var(--accent);
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 100%;
+        }
+        .code-keyword { color: #569cd6; }
+        .code-string { color: #ce9178; }
+        .code-comment { color: #6a9955; }
+
+        /* 数据指标 */
+        .metric-item { text-align: center; }
+        .metric-value { font-size: 5rem; font-weight: 800; color: var(--accent); display: block; }
+        .metric-label { font-size: 1.5rem; color: var(--text-tertiary); margin-top: 10px; }
+
+        /* 图表容器 */
+        .chart-container { width: 100%; height: 100%; }
+
+        /* 控制栏 */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 50%;
+            transform: translateX(calc(var(--stage-max)/2 + 20px));
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .btn {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+        .page-indicator { color: #888; margin: auto 10px; font-family: monospace; }
+
+        /* 标签 */
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(0,255,136,0.1);
+            color: var(--accent);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-top: auto;
+            align-self: flex-start;
+        }
+
+        /* 词云模拟 */
+        .word-cloud { position: relative; width: 100%; height: 100%; }
+        .word { position: absolute; font-weight: bold; opacity: 0; }
+    </style>
+</head>
+<body>
+
+<div id="stage-container">
+    <div class="grid-bg"></div>
+
+    <div class="slide active" id="s1">
+        <div class="content split">
+            <div style="flex: 1.5; justify-content: center;">
+                <h1 style="font-size: 4rem; margin-bottom: 20px; color: #fff;">大数据与人工智能</h1>
+                <h2 style="font-size: 2rem; color: var(--accent); font-weight: 300;">模块三：从数据挖掘到视觉叙事</h2>
+            </div>
+            <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                <div style="width: 300px; height: 300px; border: 2px solid var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative;">
+                    <div style="font-size: 8rem;">👁️</div>
+                    <div style="position: absolute; width: 100%; height: 100%; border: 1px dashed rgba(255,255,255,0.3); border-radius: 50%; animation: spin 20s linear infinite;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s2">
+        <div class="header"><h1 class="slide-title">本节课核心目标</h1></div>
+        <div class="content grid-3">
+            <div class="card">
+                <h3>01. 技术操作</h3>
+                <p>掌握 Matplotlib 双轴图表 (Twin Axis) 的绘制方法，解决多维数据量级差异问题。</p>
+                <span class="tag">Python</span>
+            </div>
+            <div class="card">
+                <h3>02. 算法原理</h3>
+                <p>理解中文文本挖掘全流程，掌握 Jieba 分词与停用词 (Stop Words) 过滤机制。</p>
+                <span class="tag">NLP</span>
+            </div>
+            <div class="card">
+                <h3>03. 批判思维</h3>
+                <p>识别数据图表中的视觉修辞与误导，理解算法背后的“把关人”伦理。</p>
+                <span class="tag">Ethics</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s3">
+        <div class="content big-text">
+            <h1 style="font-size: 6rem; color: var(--accent); margin-bottom: 20px;">Visual Narrative</h1>
+            <p style="font-size: 2rem; max-width: 800px; color: #fff;">在大数据时代，图表不再是配角，<br>它是<span style="color: var(--accent); border-bottom: 2px solid var(--accent);">报道的主角</span>。</p>
+        </div>
+    </div>
+
+    <div class="slide" id="s4">
+        <div class="header"><h1 class="slide-title">视觉修辞 Visual Rhetoric</h1></div>
+        <div class="content split">
+            <div class="card">
+                <h3>Edward Tufte</h3>
+                <p>耶鲁大学统计学与政治学教授，被誉为“数据可视化领域的达芬奇”。</p>
+                <p style="margin-top:20px; font-style: italic;">"Graphical excellence is that which gives to the viewer the greatest number of ideas in the shortest time with the least ink in the smallest space."</p>
+            </div>
+            <div class="card" style="align-items: center; justify-content: center;">
+                <div style="font-size: 8rem;">📘</div>
+                <p style="margin-top: 20px;">《The Visual Display of Quantitative Information》</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s5">
+        <div class="header"><h1 class="slide-title">数据墨水比 Data-Ink Ratio</h1></div>
+        <div class="content split">
+            <div style="align-items: center; justify-content: center;">
+                <div style="font-size: 3rem; background: #222; padding: 40px; border-radius: 16px; border: 1px solid #444;">
+                    $$ \text{Ratio} = \frac{\text{Data-Ink}}{\text{Total-Ink}} $$
+                </div>
+            </div>
+            <div class="card">
+                <h3>核心定义</h3>
+                <ul>
+                    <li><strong>Data-Ink</strong>: 图表中不可删除的核心数据部分。</li>
+                    <li><strong>Total-Ink</strong>: 图表中使用的所有墨水（包括网格、背景、边框）。</li>
+                    <li><strong>原则</strong>: 在不损失信息的前提下，最大化比率，删除一切装饰性噪音。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s6">
+        <div class="header"><h1 class="slide-title">反面教材：Chart Junk</h1></div>
+        <div class="content grid-2">
+            <div class="card" style="justify-content: center; align-items: center; background: #2a1111;">
+                <div style="width: 200px; height: 200px; background: conic-gradient(from 0deg, #ff4d4f 0deg 120deg, #ff7875 120deg 240deg, #ffa39e 240deg 360deg); border-radius: 50%; box-shadow: 10px 10px 0px #5c0011; transform: rotateX(45deg);"></div>
+                <p style="margin-top: 30px; font-family: monospace;">[3D Effect + Shadows + Gradients]</p>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--accent-red);">视觉噪音 (Visual Noise)</h3>
+                <ul>
+                    <li>3D 效果扭曲了数据的真实比例。</li>
+                    <li>过多的阴影和渐变分散了注意力。</li>
+                    <li>装饰性元素大于信息性元素。</li>
+                    <li><strong>结论</strong>：为了"好看"而牺牲了"真实"。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s7">
+        <div class="header"><h1 class="slide-title">正面教材：Caixin Data</h1></div>
+        <div class="content grid-2">
+            <div class="card" style="justify-content: center; align-items: center;">
+                 <svg width="80%" height="200" style="overflow: visible;">
+                     <line x1="0" y1="180" x2="300" y2="180" stroke="#555" stroke-width="1" />
+                     <polyline points="0,150 50,140 100,100 150,110 200,60 250,40 300,20" fill="none" stroke="#00ff88" stroke-width="3" />
+                     <circle cx="200" cy="60" r="4" fill="#00ff88" />
+                     <text x="210" y="55" fill="#fff" font-size="14">关键拐点</text>
+                 </svg>
+            </div>
+            <div class="card">
+                <h3>极简主义 (Minimalism)</h3>
+                <ul>
+                    <li>去除背景网格线。</li>
+                    <li>仅保留关键趋势线。</li>
+                    <li>直接在数据点旁标注，而非依赖复杂的图例。</li>
+                    <li><strong>结论</strong>：让数据直接说话。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s8">
+        <div class="header"><h1 class="slide-title">工具思维：Excel 的边界</h1></div>
+        <div class="content grid-2">
+            <div class="card">
+                <h3>所见即所得 (WYSIWYG)</h3>
+                <p>优点：直观、上手快，适合处理小规模静态数据。</p>
+                <div style="margin-top: 20px; background: #fff; color: #000; padding: 10px; border-radius: 4px;">
+                    Grid UI Interface
+                </div>
+            </div>
+            <div class="card" style="border-color: var(--accent-red);">
+                <h3 style="color: var(--accent-red);">痛点场景</h3>
+                <p>当你需要分析 <strong>10年间 3000个县域</strong> 的经济数据时：</p>
+                <ul>
+                    <li>Excel 会崩溃或极度卡顿。</li>
+                    <li>重复性操作（复制粘贴）容易出错。</li>
+                    <li>无法复用处理逻辑。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s9">
+        <div class="header"><h1 class="slide-title">工程思维：Python 的进阶</h1></div>
+        <div class="content grid-2">
+            <div class="card">
+                <h3>代码化逻辑</h3>
+                <div class="code-block">for file in data_files:
+    clean_data(file)
+    plot_chart(file)</div>
+            </div>
+            <div class="card">
+                <h3>核心优势</h3>
+                <ul>
+                    <li><strong>自动化</strong>：让机器代替人工完成重复劳动。</li>
+                    <li><strong>复用性 (Reusability)</strong>：只需修改一个参数，即可处理千万级数据。</li>
+                    <li><strong>透明性</strong>：清洗逻辑清晰可见，方便回溯。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s10">
+        <div class="content big-text">
+            <h2 style="color: var(--text-secondary); margin-bottom: 20px;">PART 01</h2>
+            <h1 style="font-size: 5rem; color: #fff;">双轴叙事</h1>
+            <h3 style="font-size: 2rem; color: var(--accent); margin-top: 20px;">解决多维数据的量级冲突</h3>
+        </div>
+    </div>
+
+    <div class="slide" id="s11">
+        <div class="header"><h1 class="slide-title">案例：家庭结构的“一增一减”</h1></div>
+        <div class="content split">
+            <div class="card">
+                <h3>社会学现象</h3>
+                <p>随着出生率的下降，“它经济”（宠物经济）是否迎来了爆发？</p>
+                <p style="margin-top: 20px;">我们试图探讨这两者之间是否存在<strong>相关性</strong>。</p>
+            </div>
+            <div class="card">
+                <h3>数据来源</h3>
+                <ul>
+                    <li>📉 <strong>出生率</strong>：国家统计局</li>
+                    <li>📈 <strong>市场规模</strong>：《中国宠物行业白皮书》</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s12">
+        <div class="header"><h1 class="slide-title">痛点：量级差异 (Scale Gap)</h1></div>
+        <div class="content data-first">
+            <div class="metric-item">
+                <span class="metric-value" style="color: var(--accent-red);">6.39 ‰</span>
+                <span class="metric-label">出生率 (千分比)</span>
+            </div>
+            <div style="font-size: 3rem; color: #555;">VS</div>
+            <div class="metric-item">
+                <span class="metric-value" style="color: var(--accent-blue);">5928 亿</span>
+                <span class="metric-label">市场规模 (千亿级)</span>
+            </div>
+        </div>
+        <div style="position:absolute; bottom:20px; width:100%; text-align:center; color: var(--text-secondary);">
+            如果画在同一个Y轴上，出生率会变成一条毫无波动的直线（接近0）。
+        </div>
+    </div>
+
+    <div class="slide" id="s13">
+        <div class="header"><h1 class="slide-title">技术解法：Twin Axis</h1></div>
+        <div class="content split">
+            <div class="card">
+                <h3>核心原理</h3>
+                <ul>
+                    <li><strong>共享 X 轴</strong>：年份（2018-2023）保持一致。</li>
+                    <li><strong>独立 Y 轴</strong>：
+                        <ul>
+                            <li>左轴：0 - 15 (‰)</li>
+                            <li>右轴：0 - 6000 (亿元)</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="card" style="justify-content: center; align-items: center;">
+                 <div style="display:flex; justify-content:space-between; width: 80%; border-bottom: 2px solid #fff; position: relative; height: 200px;">
+                     <div style="position:absolute; left:0; top:0; bottom:0; border-left: 2px solid var(--accent-red);"></div>
+                     <div style="position:absolute; right:0; top:0; bottom:0; border-right: 2px solid var(--accent-blue);"></div>
+                     <span style="position:absolute; bottom:-30px; left:45%;">Shared X-Axis</span>
+                     <span style="position:absolute; left:-60px; top:50%; color:var(--accent-red);">Left Y</span>
+                     <span style="position:absolute; right:-60px; top:50%; color:var(--accent-blue);">Right Y</span>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s14">
+        <div class="header"><h1 class="slide-title">Step 1: 数据准备</h1></div>
+        <div class="content split">
+            <div class="card">
+                <div class="code-block">
+years = [2018, 2019, 2020, 2021, 2022, 2023]
+
+# 左轴数据：出生率 (千分比)
+birth_rate = [10.94, 10.48, 8.52, 7.52, 6.77, 6.39]
+
+# 右轴数据：市场规模 (亿元)
+pet_economy = [1708, 2024, 2953, 3942, 4936, 5928]
+                </div>
+            </div>
+            <div class="card">
+                <h3>结构化数据 List</h3>
+                <p>确保三个列表的长度完全一致（len = 6）。</p>
+                <p>这是数据清洗后的标准输入格式。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s15">
+        <div class="header"><h1 class="slide-title">Step 2: 绘制左轴</h1></div>
+        <div class="content split">
+            <div class="card">
+                 <div class="code-block">
+fig, ax1 = plt.subplots(figsize=(10, 6))
+
+color_left = '#FF6B6B' # 红色代表警示
+ax1.set_xlabel('年份')
+ax1.set_ylabel('出生率 (‰)', color=color_left)
+
+# 绘制折线图
+ax1.plot(years, birth_rate, color=color_left, 
+         marker='o', linewidth=3)
+
+ax1.tick_params(axis='y', labelcolor=color_left)
+                </div>
+            </div>
+            <div class="card">
+                <h3>实例化对象</h3>
+                <p><code>ax1</code> 是我们的第一个坐标轴对象。</p>
+                <p>我们将其相关的所有元素（线条、标签、刻度）都设置为红色，以示区分。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s16">
+        <div class="header"><h1 class="slide-title">Step 3: 双轴魔法 TwinX</h1></div>
+        <div class="content split">
+            <div class="card">
+                 <div class="code-block">
+# 关键代码：创建共享x轴的右轴
+ax2 = ax1.twinx() 
+
+color_right = '#4ECDC4' # 青色代表增长
+ax2.set_ylabel('宠物市场规模 (亿元)', color=color_right)
+
+# 绘制柱状图 (bar)
+# alpha=0.3 设置透明度，防止遮挡
+ax2.bar(years, pet_economy, color=color_right, 
+        alpha=0.3)
+
+ax2.tick_params(axis='y', labelcolor=color_right)
+                </div>
+            </div>
+            <div class="card">
+                <h3>TwinX 函数</h3>
+                <p><code>ax2 = ax1.twinx()</code> 创建了一个新的轴，它与 ax1 共享 x 轴。</p>
+                <p>注意使用透明度 (alpha)，确保柱状图不会完全遮挡背后的趋势线（虽然在此例中我们混用了折线和柱状）。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s17">
+        <div class="header"><h1 class="slide-title">Step 4: 细节与标注</h1></div>
+        <div class="content split">
+            <div class="card">
+                 <div class="code-block">
+# 解决中文乱码
+plt.rcParams['font.sans-serif'] = ['SimHei']
+
+# 添加标题
+plt.title("此消彼长：出生率与宠物经济趋势对比", 
+          fontsize=14, pad=20)
+
+# 添加来源标注
+plt.text(2018, 6000, 
+         "数据来源: 国家统计局 / 宠物行业白皮书", 
+         fontsize=8, color='gray')
+                </div>
+            </div>
+            <div class="card">
+                <h3>新闻要素完善</h3>
+                <p>图表不仅要正确，还要专业。</p>
+                <p>标题告诉读者看什么，来源标注建立可信度。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s18">
+        <div class="header"><h1 class="slide-title">可视化成果</h1></div>
+        <div class="content" style="background: #fff; padding: 20px; border-radius: 8px;">
+            <div id="mainChart" style="width: 100%; height: 100%;"></div>
+        </div>
+    </div>
+
+    <div class="slide" id="s19">
+        <div class="header"><h1 class="slide-title">解读：完美的“X”交叉</h1></div>
+        <div class="content split">
+            <div class="card" style="border-left: 5px solid var(--accent-red);">
+                <h3 style="color: var(--accent-red);">↘ 出生率下降</h3>
+                <p>从 2018 年的 10.94‰ 一路下滑至 2023 年的 6.39‰。</p>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--accent-blue);">
+                <h3 style="color: var(--accent-blue);">↗ 经济爆发</h3>
+                <p>宠物市场规模同期翻了三倍，达到近 6000 亿元。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s20">
+        <div class="header"><h1 class="slide-title">警惕因果陷阱</h1></div>
+        <div class="content grid-2">
+            <div class="card" style="background: rgba(255, 77, 79, 0.1); border-color: var(--accent-red);">
+                <h3 style="color: var(--accent-red);">❌ 错误推导</h3>
+                <p>“年轻人因为养猫，所以不生孩子。”</p>
+                <p>这是一种懒惰的线性思维。</p>
+            </div>
+            <div class="card">
+                <h3 style="color: var(--accent);">✅ 专业判断</h3>
+                <p><strong>Correlation ≠ Causation</strong></p>
+                <p>这只是<strong>伴生现象</strong>。两者可能共同受到城市化压力、生活成本上升、观念转变等第三方变量的影响。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s21">
+        <div class="content big-text">
+            <h2 style="color: var(--text-secondary); margin-bottom: 20px;">PART 02</h2>
+            <h1 style="font-size: 5rem; color: #fff;">文本挖掘</h1>
+            <h3 style="font-size: 2rem; color: var(--accent); margin-top: 20px;">算法眼中的舆论场</h3>
+        </div>
+    </div>
+
+    <div class="slide" id="s22">
+        <div class="header"><h1 class="slide-title">数据的两张面孔</h1></div>
+        <div class="content grid-2">
+            <div class="card">
+                <h3>结构化数据 Structured</h3>
+                <p>Excel, SQL, CSV</p>
+                <p>行列分明，数值为主，计算机易于处理。</p>
+            </div>
+            <div class="card">
+                <h3>非结构化数据 Unstructured</h3>
+                <p>文本, 图像, 音频</p>
+                <p>包含语境、情感、讽刺，计算机处理难度大。</p>
+                <p style="color: var(--accent);">本节重点：中文文本。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s23">
+        <div class="header"><h1 class="slide-title">案例：《黑神话：悟空》</h1></div>
+        <div class="content split">
+            <div class="card">
+                <h3>数据源</h3>
+                <p>微博热门话题下 Top 1000 条用户评论。</p>
+            </div>
+            <div class="card">
+                <h3>分析目标</h3>
+                <p>从海量的杂乱文本中，提取出公众的<strong>核心情绪</strong>和<strong>关注焦点</strong>。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s24">
+        <div class="header"><h1 class="slide-title">原始语料的挑战</h1></div>
+        <div class="content grid-2">
+            <div class="card">
+                <div class="code-block" style="color: #888;">
+"真的哭了，片头音乐一响..."
+"就是觉得有点卡..."
+"那个特效真的绝了..."
+"什么神仙画质..."
+"还得是国产..."
+                </div>
+            </div>
+            <div class="card">
+                <h3>虚词干扰</h3>
+                <p>如果我们直接统计词频，出现最多的词会是：</p>
+                <p style="font-size: 2rem; color: var(--accent-red);">"真的", "就是", "了", "什么"</p>
+                <p>这些词没有实际意义。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s25">
+        <div class="header"><h1 class="slide-title">核心机制：停用词 Stop Words</h1></div>
+        <div class="content grid-3">
+            <div class="card">
+                <h3>1. 识别噪音</h3>
+                <p>找出文本中无意义的高频虚词、语气词、标点符号。</p>
+            </div>
+            <div class="card">
+                <h3>2. 构建词表</h3>
+                <p>创建一个 List，包含所有需要剔除的词。</p>
+                <p class="code-block" style="font-size: 0.8rem;">stop = ['真的', '就是', ...]</p>
+            </div>
+            <div class="card">
+                <h3>3. 过滤清洗</h3>
+                <p>遍历分词结果，仅保留不在停用词表中的实词。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s26">
+        <div class="header"><h1 class="slide-title">算法把关人 Gatekeeper</h1></div>
+        <div class="content split">
+            <div class="card">
+                <h3>Editorial Judgment</h3>
+                <p>定义停用词表的过程，本质上就是<strong>新闻编辑行使权力</strong>的过程。</p>
+            </div>
+            <div class="card" style="border-color: var(--accent-red);">
+                <h3 style="color: var(--accent-red);">伦理警示</h3>
+                <p>如果你在停用词表中加入了“卡顿”、“掉帧”、“优化差”...</p>
+                <p>你就在人为制造“报喜不报忧”的假象。</p>
+                <p><strong>你删除了什么，决定了读者看到什么。</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s27">
+        <div class="header"><h1 class="slide-title">代码实现：Jieba 分词</h1></div>
+        <div class="content split">
+            <div class="card">
+                <div class="code-block">
+import jieba
+
+text = "黑神话太牛了，但是优化有点差"
+stopwords = {'但是', '有点', '了'}
+
+# 1. 精细化分词
+words = jieba.lcut(text)
+# output: ['黑神话', '太', '牛', '了', '但是', '优化', '有点', '差']
+
+# 2. 停用词过滤 (List Comprehension)
+clean = [w for w in words if w not in stopwords]
+# output: ['黑神话', '太', '牛', '优化', '差']
+                </div>
+            </div>
+            <div class="card">
+                <h3>逻辑解析</h3>
+                <p><code>jieba.lcut</code>：将连续的句子切分成词语列表。</p>
+                <p><code>if w not in stopwords</code>：核心过滤逻辑。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s28">
+        <div class="header"><h1 class="slide-title">舆论场可视化</h1></div>
+        <div class="content" style="position: relative;">
+            <div class="word-cloud" id="wordCloudContainer">
+                </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s29">
+        <div class="header"><h1 class="slide-title">AI 辅助编程新范式</h1></div>
+        <div class="content grid-2">
+            <div class="card">
+                <h3>❌ 旧模式</h3>
+                <p>死记硬背每一行代码语法。</p>
+                <p>一旦报错就束手无策。</p>
+            </div>
+            <div class="card">
+                <h3>✅ Prompt Engineering</h3>
+                <p>学会向 AI 提问：</p>
+                <p class="code-block" style="font-size: 0.9rem;">"作为一名数据新闻编辑，请帮我用 Python 分析这篇 txt 文档。请使用 jieba 分词，去除通用停用词，并绘制 Top 20 柱状图..."</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" id="s30">
+        <div class="header"><h1 class="slide-title">课后作业：寻找“沉默的数据”</h1></div>
+        <div class="content grid-2">
+            <div class="card">
+                <h3>任务</h3>
+                <p>利用本节课学到的“双轴图”或“文本分析”技术，完成一份微型数据新闻稿。</p>
+            </div>
+            <div class="card">
+                <h3>核心要求</h3>
+                <p>必须在附录中说明你在数据清洗时的<strong>主观考量</strong>。</p>
+                <p>—— 你删除了什么？为什么？</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="prevSlide()">← Prev</button>
+        <span class="page-indicator" id="pageIndicator">1 / 30</span>
+        <button class="btn" onclick="nextSlide()">Next →</button>
+        <button class="btn" onclick="downloadPDF()" style="margin-left: 20px;">Download PDF</button>
+    </div>
+
+</div>
+
+<script>
+    // 状态管理
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const indicator = document.getElementById('pageIndicator');
+    let chartInstance = null;
+
+    // 初始化
+    function init() {
+        updateSlide();
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+        
+        // 预生成词云
+        generateWordCloud();
+    }
+
+    // 翻页逻辑
+    function updateSlide() {
+        slides.forEach((slide, index) => {
+            if (index === currentSlide) {
+                slide.classList.add('active');
+                animateSlide(slide, index);
+            } else {
+                slide.classList.remove('active');
+            }
+        });
+        indicator.textContent = `${currentSlide + 1} / ${totalSlides}`;
+        
+        // 触发特定图表
+        if (slides[currentSlide].id === 's18') renderChart();
+    }
+
+    function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            updateSlide();
+        }
+    }
+
+    function prevSlide() {
+        if (currentSlide > 0) {
+            currentSlide--;
+            updateSlide();
+        }
+    }
+
+    // GSAP 动效
+    function animateSlide(slide, index) {
+        // 重置元素状态
+        const cards = slide.querySelectorAll('.card');
+        const title = slide.querySelector('.slide-title');
+        const code = slide.querySelector('.code-block');
+        
+        gsap.killTweensOf([cards, title, code]);
+        
+        if (title) {
+            gsap.fromTo(title, 
+                { y: -20, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.6, ease: "power2.out" }
+            );
+        }
+
+        if (cards.length > 0) {
+            gsap.fromTo(cards, 
+                { y: 30, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: "power2.out", delay: 0.2 }
+            );
+        }
+
+        if (code) {
+            gsap.fromTo(code,
+                { opacity: 0 },
+                { opacity: 1, duration: 1, delay: 0.5 }
+            );
+        }
+    }
+
+    // 渲染 ECharts 图表 (S18)
+    function renderChart() {
+        const dom = document.getElementById('mainChart');
+        if (chartInstance) chartInstance.dispose();
+        
+        chartInstance = echarts.init(dom);
+        
+        const option = {
+            backgroundColor: '#ffffff',
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['出生率', '市场规模'], bottom: 10 },
+            xAxis: { 
+                data: ['2018', '2019', '2020', '2021', '2022', '2023'],
+                axisLine: { lineStyle: { color: '#666' } }
+            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: '出生率 (‰)',
+                    min: 0, max: 15,
+                    position: 'left',
+                    axisLine: { show: true, lineStyle: { color: '#FF6B6B' } },
+                    axisLabel: { color: '#FF6B6B' }
+                },
+                {
+                    type: 'value',
+                    name: '市场规模 (亿元)',
+                    min: 0, max: 6000,
+                    position: 'right',
+                    axisLine: { show: true, lineStyle: { color: '#4ECDC4' } },
+                    axisLabel: { color: '#4ECDC4' },
+                    splitLine: { show: false }
+                }
+            ],
+            series: [
+                {
+                    name: '出生率',
+                    type: 'line',
+                    data: [10.94, 10.48, 8.52, 7.52, 6.77, 6.39],
+                    itemStyle: { color: '#FF6B6B' },
+                    lineStyle: { width: 4 },
+                    symbolSize: 8,
+                    animationDuration: 1500
+                },
+                {
+                    name: '市场规模',
+                    type: 'bar',
+                    yAxisIndex: 1,
+                    data: [1708, 2024, 2953, 3942, 4936, 5928],
+                    itemStyle: { color: '#4ECDC4', opacity: 0.6 },
+                    barWidth: '40%',
+                    animationDuration: 1500,
+                    animationDelay: 500
+                }
+            ]
+        };
+        
+        chartInstance.setOption(option);
+    }
+
+    // 生成模拟词云 (S28)
+    function generateWordCloud() {
+        const container = document.getElementById('wordCloudContainer');
+        const words = [
+            { text: "黑神话", size: 60, color: "#00ff88" },
+            { text: "国产之光", size: 50, color: "#00ff88" },
+            { text: "文化输出", size: 45, color: "#00d084" },
+            { text: "显卡", size: 40, color: "#fff" },
+            { text: "优化", size: 40, color: "#fff" },
+            { text: "掉帧", size: 30, color: "#ccc" },
+            { text: "西游记", size: 35, color: "#00ff88" },
+            { text: "打击感", size: 30, color: "#ccc" },
+            { text: "BOSS", size: 25, color: "#888" },
+            { text: "空气墙", size: 25, color: "#888" },
+            { text: "剧情", size: 30, color: "#fff" },
+            { text: "美术", size: 35, color: "#00d084" }
+        ];
+
+        words.forEach(w => {
+            const el = document.createElement('div');
+            el.className = 'word';
+            el.textContent = w.text;
+            el.style.fontSize = w.size + 'px';
+            el.style.color = w.color;
+            // 随机分布
+            el.style.left = Math.random() * 80 + 10 + '%';
+            el.style.top = Math.random() * 80 + 10 + '%';
+            container.appendChild(el);
+        });
+
+        // 词云动效
+        const obs = new MutationObserver((mutations) => {
+            if(document.getElementById('s28').classList.contains('active')) {
+                gsap.to('.word', {
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.8,
+                    stagger: { amount: 1, from: "random" },
+                    ease: "back.out(1.7)"
+                });
+            } else {
+                gsap.set('.word', { opacity: 0, scale: 0 });
+            }
+        });
+        obs.observe(document.getElementById('s28'), { attributes: true });
+    }
+
+    // PDF 下载功能
+    async function downloadPDF() {
+        const btn = document.querySelector('.controls button[onclick="downloadPDF()"]');
+        btn.textContent = "Generating...";
+        
+        const pdf = new jspdf.jsPDF({
+            orientation: 'landscape',
+            unit: 'px',
+            format: [1920, 1080]
+        });
+
+        const stage = document.getElementById('stage-container');
+        
+        // 临时移除 transform 和隐藏非当前 slide
+        const originalStyles = [];
+        slides.forEach(s => {
+            originalStyles.push({ opacity: s.style.opacity, display: s.style.display, visibility: s.style.visibility });
+            s.style.opacity = '1';
+            s.style.visibility = 'visible';
+            s.style.display = 'flex'; // 强制显示所有以便截图，但这样会重叠
+            // 实际策略：逐页显示截图
+            s.style.display = 'none';
+        });
+
+        // 隐藏控制栏
+        document.querySelector('.controls').style.display = 'none';
+
+        for (let i = 0; i < totalSlides; i++) {
+            // 显示当前页
+            slides[i].style.display = 'flex';
+            slides[i].style.opacity = '1';
+            slides[i].style.visibility = 'visible';
+            
+            // 强制渲染图表
+            if (slides[i].id === 's18' && chartInstance) {
+                chartInstance.resize();
+            }
+
+            await new Promise(r => setTimeout(r, 100)); // 等待渲染
+
+            const canvas = await html2canvas(stage, {
+                scale: 1, // 降低分辨率以提升速度，导出原图可设为 2
+                backgroundColor: '#000000',
+                useCORS: true
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            if (i > 0) pdf.addPage([1920, 1080]);
+            pdf.addImage(imgData, 'JPEG', 0, 0, 1920, 1080);
+            
+            // 隐藏当前页
+            slides[i].style.display = 'none';
+        }
+
+        // 恢复状态
+        slides.forEach((s, i) => {
+            s.style.opacity = originalStyles[i].opacity;
+            s.style.visibility = originalStyles[i].visibility;
+            s.style.display = i === currentSlide ? 'flex' : 'flex'; // 恢复 flex 布局
+            if (i !== currentSlide) s.classList.remove('active');
+            else s.classList.add('active');
+        });
+        document.querySelector('.controls').style.display = 'flex';
+        btn.textContent = "Download PDF";
+        
+        pdf.save('data-narrative-slides.pdf');
+    }
+
+    // 启动
+    init();
+
+</script>
+</body>
+</html>
