@@ -1,2 +1,11 @@
 venv/
 .venv/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+
+# === Env / Secrets ===
+.env
+.env.local
+.env.*.local
